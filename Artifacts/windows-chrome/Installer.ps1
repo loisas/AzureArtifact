@@ -39,19 +39,17 @@ function WriteLog
     )
 
     $timestampedMessage = $("[" + [System.DateTime]::Now + "] " + $message) | % {  
-        Write-Host -Object $_
+        WriteLog -Object $_
         Out-File -InputObject $_ -FilePath $ScriptLog -Append
     }
 }
 
 function InstallPackages
 {
-	$source = 'C:\source'
-
-	If (!(Test-Path -Path $source -PathType Container)) {New-Item -Path $source -ItemType Directory | Out-Null} 
+	If (!(Test-Path -Path $PackageInstallerFolder -PathType Container)) {New-Item -Path $PackageInstallerFolder -ItemType Directory | Out-Null} 
 
 	$packages = @( 
-	@{title='7zip Extractor';url='http://downloads.sourceforge.net/sevenzip/7z920-x64.msi';Arguments=' /qn';Destination=$source}
+	@{title='7zip Extractor';url='http://downloads.sourceforge.net/sevenzip/7z920-x64.msi';Arguments=' /qn';Destination=$PackageInstallerFolder}
 	) 
 
 
@@ -62,7 +60,7 @@ function InstallPackages
 
 	If (!(Test-Path -Path $destinationPath -PathType Leaf)) { 
 
-		Write-Host "Downloading $packageName" 
+		WriteLog "Downloading $packageName" 
 		$webClient = New-Object System.Net.WebClient 
 		$webClient.DownloadFile($package.url,$destinationPath) 
 		} 
@@ -75,7 +73,7 @@ function InstallPackages
 		$fileName = Split-Path $package.url -Leaf 
 		$destinationPath = $package.Destination + "\" + $fileName 
 		$Arguments = $package.Arguments 
-		Write-Output "Installing $packageName" 
+		WriteLog "Installing $packageName" 
 
 
 	Invoke-Expression -Command "$destinationPath $Arguments" 
