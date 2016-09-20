@@ -47,7 +47,7 @@ function WriteLog
 function InstallPackages
 {
 	$packages = @( 
-	@{title='7zip Extractor';url='http://downloads.sourceforge.net/sevenzip/7z920-x64.msi';Arguments=' /qn';Destination=$PackageInstallerFolder}
+	@{title='Dropbox';url='https://raw.githubusercontent.com/loisas/AzureArtifact/master/Artifacts/windows-dropbox/Dropbox.exe';Arguments=' /S';Destination=$PackageInstallerFolder}
 	) 
 
 
