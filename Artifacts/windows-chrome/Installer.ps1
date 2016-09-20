@@ -12,39 +12,97 @@ Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
 
 ###################################################################################################
 
-$source = 'C:\source'
 
-If (!(Test-Path -Path $source -PathType Container)) {New-Item -Path $source -ItemType Directory | Out-Null} 
+#
+# Custom Configurations
+#
 
-$packages = @( 
-@{title='7zip Extractor';url='http://downloads.sourceforge.net/sevenzip/7z920-x64.msi';Arguments=' /qn';Destination=$source}, 
-@{title='Putty 0.63';url='http://the.earth.li/~sgtatham/putty/latest/x86/putty-0.63-installer.exe';Arguments=' /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-';Destination=$source} 
-@{title='Notepad++ 6.6.8';url='http://download.tuxfamily.org/notepadplus/6.6.8/npp.6.6.8.Installer.exe';Arguments=' /Q /S';Destination=$source} 
-) 
+$PackageInstallerFolder = Join-Path $env:ALLUSERSPROFILE -ChildPath $("PackageInstaller-" + [System.DateTime]::Now.ToString("yyyy-MM-dd-HH-mm-ss"))
+
+# Location of the log files
+$ScriptLog = Join-Path -Path $PackageInstallerFolder -ChildPath "PackageInstaller.log"
 
 
-foreach ($package in $packages) { 
-        $packageName = $package.title 
-        $fileName = Split-Path $package.url -Leaf 
-        $destinationPath = $package.Destination + "\" + $fileName 
+function InitializeFolders
+{
+    if ($false -eq (Test-Path -Path $PackageInstallerFolder))
+    {
+        New-Item -Path $PackageInstallerFolder -ItemType directory | Out-Null
+    }
+}
 
-If (!(Test-Path -Path $destinationPath -PathType Leaf)) { 
 
-    Write-Host "Downloading $packageName" 
-    $webClient = New-Object System.Net.WebClient 
-    $webClient.DownloadFile($package.url,$destinationPath) 
-    } 
+function WriteLog
+{
+    Param(
+        <# Can be null or empty #> $message
+    )
+
+    $timestampedMessage = $("[" + [System.DateTime]::Now + "] " + $message) | % {  
+        Write-Host -Object $_
+        Out-File -InputObject $_ -FilePath $ScriptLog -Append
+    }
+}
+
+function InstallPackages
+{
+	$source = 'C:\source'
+
+	If (!(Test-Path -Path $source -PathType Container)) {New-Item -Path $source -ItemType Directory | Out-Null} 
+
+	$packages = @( 
+	@{title='7zip Extractor';url='http://downloads.sourceforge.net/sevenzip/7z920-x64.msi';Arguments=' /qn';Destination=$source}
+	) 
+
+
+	foreach ($package in $packages) { 
+			$packageName = $package.title 
+			$fileName = Split-Path $package.url -Leaf 
+			$destinationPath = $package.Destination + "\" + $fileName 
+
+	If (!(Test-Path -Path $destinationPath -PathType Leaf)) { 
+
+		Write-Host "Downloading $packageName" 
+		$webClient = New-Object System.Net.WebClient 
+		$webClient.DownloadFile($package.url,$destinationPath) 
+		} 
+		}
+
+	 
+	#Once we've downloaded all our files lets install them. 
+	foreach ($package in $packages) { 
+		$packageName = $package.title 
+		$fileName = Split-Path $package.url -Leaf 
+		$destinationPath = $package.Destination + "\" + $fileName 
+		$Arguments = $package.Arguments 
+		Write-Output "Installing $packageName" 
+
+
+	Invoke-Expression -Command "$destinationPath $Arguments" 
+	}
+}
+
+try
+{
+    #
+    InitializeFolders
+
+    #
+    DisplayArgValues
+    
+	InstallPackages
+}
+catch
+{
+    if (($null -ne $Error[0]) -and ($null -ne $Error[0].Exception) -and ($null -ne $Error[0].Exception.Message))
+    {
+        $errMsg = $Error[0].Exception.Message
+        WriteLog $errMsg
+        Write-Host $errMsg
     }
 
- 
-#Once we've downloaded all our files lets install them. 
-foreach ($package in $packages) { 
-    $packageName = $package.title 
-    $fileName = Split-Path $package.url -Leaf 
-    $destinationPath = $package.Destination + "\" + $fileName 
-    $Arguments = $package.Arguments 
-    Write-Output "Installing $packageName" 
-
-
-Invoke-Expression -Command "$destinationPath $Arguments" 
+    # Important note: Throwing a terminating error (using $ErrorActionPreference = "stop") still returns exit 
+    # code zero from the powershell script. The workaround is to use try/catch blocks and return a non-zero 
+    # exit code from the catch block. 
+    exit -1
 }
