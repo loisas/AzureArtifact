@@ -47,8 +47,8 @@ function WriteLog
 function InstallPackages
 {
 	$packages = @( 
-	@{title='Dropbox';url='https://raw.githubusercontent.com/loisas/AzureArtifact/master/Artifacts/windows-dropbox/Dropbox.exe';Arguments=' /S';Destination=$PackageInstallerFolder}
-	) 
+	@{title='Notepad++';url='http://download.tuxfamily.org/notepadplus/archive/6.7.5/npp.6.7.5.Installer.exe';Arguments=' /Q /S';Destination=$PackageInstallerFolder}
+	)
 
 
 	foreach ($package in $packages) { 
