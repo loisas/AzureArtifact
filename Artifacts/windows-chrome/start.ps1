@@ -1,54 +1,102 @@
-﻿Function Get-TempPassword() 
+##################################################################################################
+
+#
+# Powershell Configurations
+#
+
+# Note: Because the $ErrorActionPreference is "Stop", this script will stop on first failure.  
+$ErrorActionPreference = "stop"
+
+# Ensure that current process can run scripts. 
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force 
+
+###################################################################################################
+
+
+#
+# Custom Configurations
+#
+
+$PackageInstallerFolder = Join-Path $env:ALLUSERSPROFILE -ChildPath $("PackageInstaller-" + [System.DateTime]::Now.ToString("yyyy-MM-dd-HH-mm-ss"))
+
+# Location of the log files
+$ScriptLog = Join-Path -Path $PackageInstallerFolder -ChildPath "PackageInstaller.log"
+
+
+function InitializeFolders
+{
+    if ($false -eq (Test-Path -Path $PackageInstallerFolder))
+    {
+        New-Item -Path $PackageInstallerFolder -ItemType directory | Out-Null
+    }
+}
+
+
+function WriteLog
 {
     Param(
-        [int] $length=10,
-        [string[]] $sourcedata
+        <# Can be null or empty #> $message
     )
 
-    For ($loop=1; $loop –le $length; $loop++) 
+    $timestampedMessage = $("[" + [System.DateTime]::Now + "] " + $message) | % {  
+        Write-Host -Object $_
+        Out-File -InputObject $_ -FilePath $ScriptLog -Append
+    }
+}
+
+function InstallPackages
+{
+	$packages = @( 
+	@{title='Notepad++';url='http://download.tuxfamily.org/notepadplus/archive/6.7.5/npp.6.7.5.Installer.exe';Arguments=' /Q /S';Destination=$PackageInstallerFolder}
+	)
+
+
+	foreach ($package in $packages) { 
+			$packageName = $package.title 
+			$fileName = Split-Path $package.url -Leaf 
+			$destinationPath = $package.Destination + "\" + $fileName 
+
+	If (!(Test-Path -Path $destinationPath -PathType Leaf)) { 
+
+		WriteLog "Downloading $packageName" 
+		$webClient = New-Object System.Net.WebClient 
+		$webClient.DownloadFile($package.url,$destinationPath) 
+		} 
+		}
+
+	 
+	#Once we've downloaded all our files lets install them. 
+	foreach ($package in $packages) { 
+		$packageName = $package.title 
+		$fileName = Split-Path $package.url -Leaf 
+		$destinationPath = $package.Destination + "\" + $fileName 
+		$Arguments = $package.Arguments 
+		WriteLog "Installing $packageName" 
+
+
+	Invoke-Expression -Command "$destinationPath $Arguments" 
+	}
+}
+
+try
+{
+	InitializeFolders
+	WriteLog "Initializing Folders"
+    
+	InstallPackages
+	WriteLog "Installert"
+}
+catch
+{
+    if (($null -ne $Error[0]) -and ($null -ne $Error[0].Exception) -and ($null -ne $Error[0].Exception.Message))
     {
-        $tempPassword+=($sourcedata | GET-RANDOM)
+        $errMsg = $Error[0].Exception.Message
+        WriteLog $errMsg
+        Write-Host $errMsg
     }
 
-    return $tempPassword
+    # Important note: Throwing a terminating error (using $ErrorActionPreference = "stop") still returns exit 
+    # code zero from the powershell script. The workaround is to use try/catch blocks and return a non-zero 
+    # exit code from the catch block. 
+    exit -1
 }
-
-# Ensure Powershell 3 or more is installed.
-if ($PSVersionTable.PSVersion.Major -lt 3)
-{
-    Write-Error "Prior to running this artifact, ensure you have Powershell 3 or higher installed."
-    [System.Environment]::Exit(1)
-}
-
-$ascii=$NULL;For ($a=33;$a –le 126;$a++) {$ascii+=,[char][byte]$a }
-
-$userName = "artifactInstaller"
-$password = Get-TempPassword –length 43 –sourcedata $ascii
-
-$cn = [ADSI]"WinNT://$env:ComputerName"
-
-# Create user
-$user = $cn.Create("User", $userName)
-$user.SetPassword($password)
-$user.SetInfo()
-$user.description = "DevTestLab artifact installer"
-$user.SetInfo()
-
-# Add user to the Administrators group
-$group = [ADSI]"WinNT://$env:ComputerName/Administrators,group"
-$group.add("WinNT://$env:ComputerName/$userName")
-
-$secPassword = ConvertTo-SecureString $password -AsPlainText -Force
-$credential = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\$($username)", $secPassword)
-
-$command = $PSScriptRoot + "\Installer.ps1"
-
-# Run Chocolatey as the artifactInstaller user
-Enable-PSRemoting -Force -SkipNetworkProfileCheck
-Invoke-Command -FilePath $command -Credential $credential -ComputerName $env:COMPUTERNAME
-
-# Delete the artifactInstaller user
-$cn.Delete("User", $userName)
-
-# Delete the artifactInstaller user profile
-gwmi win32_userprofile | where { $_.LocalPath -like "*$userName*" } | foreach { $_.Delete() }
