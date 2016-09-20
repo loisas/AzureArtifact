@@ -84,11 +84,7 @@ function InstallPackages
 
 try
 {
-    #
     InitializeFolders
-
-    #
-    DisplayArgValues
     
 	InstallPackages
 }
