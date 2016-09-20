@@ -39,26 +39,17 @@ function WriteLog
     )
 
     $timestampedMessage = $("[" + [System.DateTime]::Now + "] " + $message) | % {  
-        WriteLog -Object $_
+        Write-Host -Object $_
         Out-File -InputObject $_ -FilePath $ScriptLog -Append
     }
 }
 
 function InstallPackages
 {
-
-}
-
-try
-{
-	WriteLog "Initializing Folders"
-    InitializeFolders
-    
-	WriteLog "Installing Packages"
-	
 	$packages = @( 
 	@{title='7zip Extractor';url='http://downloads.sourceforge.net/sevenzip/7z920-x64.msi';Arguments=' /qn';Destination=$PackageInstallerFolder}
-	)
+	) 
+
 
 	foreach ($package in $packages) { 
 			$packageName = $package.title 
@@ -87,6 +78,14 @@ try
 	}
 }
 
+try
+{
+	InitializeFolders
+	WriteLog "Initializing Folders"
+    
+	InstallPackages
+	WriteLog "Installert"
+}
 catch
 {
     if (($null -ne $Error[0]) -and ($null -ne $Error[0].Exception) -and ($null -ne $Error[0].Exception.Message))
