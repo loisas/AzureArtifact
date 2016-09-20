@@ -7,7 +7,7 @@
         "Windows",
 		"Dropbox"
     ],
-    "iconUri": "",
+    "iconUri": "https://github.com/loisas/AzureArtifact/blob/master/Artifacts/windows-dropbox/dropbox.png",
     "targetOsType": "Windows",
     "parameters": {},
     "runCommand": {
