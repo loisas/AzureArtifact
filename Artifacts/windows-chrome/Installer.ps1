@@ -46,12 +46,19 @@ function WriteLog
 
 function InstallPackages
 {
-	If (!(Test-Path -Path $PackageInstallerFolder -PathType Container)) {New-Item -Path $PackageInstallerFolder -ItemType Directory | Out-Null} 
 
+}
+
+try
+{
+	WriteLog "Initializing Folders"
+    InitializeFolders
+    
+	WriteLog "Installing Packages"
+	
 	$packages = @( 
 	@{title='7zip Extractor';url='http://downloads.sourceforge.net/sevenzip/7z920-x64.msi';Arguments=' /qn';Destination=$PackageInstallerFolder}
-	) 
-
+	)
 
 	foreach ($package in $packages) { 
 			$packageName = $package.title 
@@ -80,12 +87,6 @@ function InstallPackages
 	}
 }
 
-try
-{
-    InitializeFolders
-    
-	InstallPackages
-}
 catch
 {
     if (($null -ne $Error[0]) -and ($null -ne $Error[0].Exception) -and ($null -ne $Error[0].Exception.Message))
